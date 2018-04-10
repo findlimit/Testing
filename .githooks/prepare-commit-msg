@@ -1,0 +1,69 @@
+#!/usr/local/bin/python3
+
+import subprocess
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+import asana
+import json
+from six import print_
+
+if len(sys.argv) != 2:
+    print_("Unknown Error!", file=sys.stderr)
+    sys.exit(1)
+
+if 'ASANA_TOKEN' not in os.environ:
+    print_("Missing environment variable $ASANA_TOKEN", file=sys.stderr)
+    sys.exit(1)
+
+# create a client with a Personal Access Token
+client = asana.Client.access_token(os.environ['ASANA_TOKEN'])
+me = client.users.me()
+
+# look into workspace
+# fourdesire_workspace = next(workspace for workspace in me['workspaces'] if workspace['name'] == 1353370904893)
+
+param = {'completed_since': 'now', 'project': 626960828912494}
+fields = ['followers', 'created_at', 'assignee', 'name']
+# tasks = client.tasks.find_by_project(259598758508012, param, fields=fields, limit=10)
+tasks = client.tasks.find_all(param, fields=fields, limit=10)
+
+# print the latest 10 uncompleted tasks
+i = 0
+sorted_tasks = sorted(tasks, key=lambda x:x['created_at'], reverse=True)
+task_list = []
+for task in sorted_tasks:
+    i += 1
+    task_list.append(task)
+    print_(i, '#', task['id'], '"' + task['name'] + '"')
+    if i == 10:
+        break
+
+sys.stdin = open("/dev/tty", "r")
+selected_task_id = ''
+while type(selected_task_id) != int:
+    try:
+        selected_task_id = int(input("Link the commit to task (enter the index 1-10): "))
+        if selected_task_id <= 0 or selected_task_id > 10:
+            print_("Please enter the right number (1-10)")
+            selected_task_id = ''
+    except KeyboardInterrupt:
+        sys.exit(1)
+    except:
+        print_("Please enter the right number (1-10)")
+
+# print_("Congrats! You select a good one")
+# print_(selected_task_id, '#', task_list[selected_task_id-1]['id'], '"' + task_list[selected_task_id-1]['name'] + '"')
+
+# Prepare commit-msg
+path_toplevel = subprocess.run(['git', 'rev-parse', '--show-toplevel'], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip()
+path_template = path_toplevel + '/.commit-msg'
+commit_template = subprocess.run(['cat', path_template], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip()
+commit_template += str(task_list[selected_task_id]['id']) + '\n'
+
+path_commit_file = path_toplevel + '/' + sys.argv[1]
+with open(path_commit_file, 'r') as f_commit:
+    commit_template += f_commit.read()
+
+with open(path_commit_file, 'w') as f_commit:
+    f_commit.write(commit_template)
