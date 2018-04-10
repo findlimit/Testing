@@ -16,9 +16,9 @@
 # grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
 
 # This example catches duplicate Signed-off-by lines.
-aa="$(grep '^# Asana Task ID: #' "$1" |
-	 sed -n -e '/^# Asana Task ID: #[0-9]\{5,\}/p')"
-if test "" = "$aa"; then
+ID="$(grep '^# Asana Task ID: #' "$1" |
+    sed -n -e 's/^# \(Asana Task ID: #[0-9]\{5,\}\)/\1/gp')"
+if test "" = "$ID"; then
 	echo >&2 Asana Task ID is not given.
 	exit 1
 fi
