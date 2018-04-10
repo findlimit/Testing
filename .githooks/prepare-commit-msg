@@ -8,6 +8,11 @@ import asana
 import json
 from six import print_
 
+# Settings
+ASANA_PROJECT_ID = 626960828912494
+DISPLAY_TASK_LIMIT = 10
+TEMPLATE_FILE_NAME = '.commit-msg'
+
 if len(sys.argv) != 2:
     print_("Unknown Error!", file=sys.stderr)
     sys.exit(1)
@@ -23,12 +28,12 @@ me = client.users.me()
 # look into workspace
 # fourdesire_workspace = next(workspace for workspace in me['workspaces'] if workspace['name'] == 1353370904893)
 
-param = {'completed_since': 'now', 'project': 626960828912494}
+param = {'completed_since': 'now', 'project': ASANA_PROJECT_ID}
 fields = ['followers', 'created_at', 'assignee', 'name']
-# tasks = client.tasks.find_by_project(259598758508012, param, fields=fields, limit=10)
-tasks = client.tasks.find_all(param, fields=fields, limit=10)
+# tasks = client.tasks.find_by_project(ASANA_PROJECT_ID, param, fields=fields, limit=DISPLAY_TASK_LIMIT)
+tasks = client.tasks.find_all(param, fields=fields, limit=DISPLAY_TASK_LIMIT)
 
-# print the latest 10 uncompleted tasks
+# print the latest DISPLAY_TASK_LIMIT uncompleted tasks
 i = 0
 sorted_tasks = sorted(tasks, key=lambda x:x['created_at'], reverse=True)
 task_list = []
@@ -36,28 +41,28 @@ for task in sorted_tasks:
     i += 1
     task_list.append(task)
     print_(i, '#', task['id'], '"' + task['name'] + '"')
-    if i == 10:
+    if i == DISPLAY_TASK_LIMIT:
         break
 
 sys.stdin = open("/dev/tty", "r")
 selected_task_id = ''
 while type(selected_task_id) != int:
     try:
-        selected_task_id = int(input("Link the commit to task (enter the index 1-10): "))
-        if selected_task_id <= 0 or selected_task_id > 10:
-            print_("Please enter the right number (1-10)")
+        selected_task_id = int(input("Link the commit to task (enter the index 1-" + str(DISPLAY_TASK_LIMIT) + "): "))
+        if selected_task_id <= 0 or selected_task_id > DISPLAY_TASK_LIMIT:
+            print_("Please enter a number between 1-" + str(DISPLAY_TASK_LIMIT))
             selected_task_id = ''
     except KeyboardInterrupt:
         sys.exit(1)
     except:
-        print_("Please enter the right number (1-10)")
+        print_("Please enter a number between 1-" + str(DISPLAY_TASK_LIMIT))
 
 # print_("Congrats! You select a good one")
 # print_(selected_task_id, '#', task_list[selected_task_id-1]['id'], '"' + task_list[selected_task_id-1]['name'] + '"')
 
 # Prepare commit-msg
 path_toplevel = subprocess.run(['git', 'rev-parse', '--show-toplevel'], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip()
-path_template = path_toplevel + '/.commit-msg'
+path_template = path_toplevel + '/' + TEMPLATE_FILE_NAME
 commit_template = subprocess.run(['cat', path_template], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip()
 commit_template += str(task_list[selected_task_id]['id']) + '\n'
 
